@@ -41,19 +41,27 @@ def generate_launch_description():
     return LaunchDescription([
 
         #common launch argument
-        DeclareLaunchArgument('use_sim_time', default_value='true', description='Use simulation (Gazebo) clock if true'),
+        DeclareLaunchArgument('use_sim_time', default_value='false', description='Use simulation (Gazebo) clock if true'),
 
         #navigation2 launch arguments
         DeclareLaunchArgument('map', default_value=map_dir, description='Full path to map file to load'),
         #DeclareLaunchArgument('slam', default_value=slam_on, description='NAV2 with launching slam'),                    #this will not be used
         DeclareLaunchArgument('params_file', default_value=nav_param_dir, description='Full path to navigation2 param file to load'),
 
-        IncludeLaunchDescription(PythonLaunchDescriptionSource([nav2_launch_file_dir, '/bringup_launch.py']),
+        # IncludeLaunchDescription(PythonLaunchDescriptionSource([nav2_launch_file_dir, '/bringup_launch.py']),
+        #     launch_arguments={
+        #         'map': map_dir,
+        #         'use_sim_time': use_sim_time,
+        #         'params_file': nav_param_dir,
+        #         #'slam': slam_on,   #this will not be used
+        #         'auto_start': auto_start, }.items(),
+        # )
+        IncludeLaunchDescription(PythonLaunchDescriptionSource([nav2_launch_file_dir, '/navigation_launch.py']),
             launch_arguments={
-                'map': map_dir,
                 'use_sim_time': use_sim_time,
                 'params_file': nav_param_dir,
                 #'slam': slam_on,   #this will not be used
                 'auto_start': auto_start, }.items(),
         )
+
     ])

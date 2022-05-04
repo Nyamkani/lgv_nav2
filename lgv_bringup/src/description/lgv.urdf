@@ -108,8 +108,8 @@
     </joint>
   </xacro:macro>
 
-  <xacro:wheel prefix="drivewhl_l" x_reflect="-1" y_reflect="1" />
-  <xacro:wheel prefix="drivewhl_r" x_reflect="-1" y_reflect="-1" />
+  <xacro:wheel prefix="drivewhl_l" x_reflect="1" y_reflect="1" />
+  <xacro:wheel prefix="drivewhl_r" x_reflect="1" y_reflect="-1" />
 
 
   <!-- dummy forks -->
@@ -141,8 +141,8 @@
     </joint>
   </xacro:macro>
 
-  <xacro:dummyfork prefix="dummyfork_l" x_reflect="-1" y_reflect="1" />
-  <xacro:dummyfork prefix="dummyfork_r" x_reflect="-1" y_reflect="-1" /> 
+  <xacro:dummyfork prefix="dummyfork_l" x_reflect="1" y_reflect="1" />
+  <xacro:dummyfork prefix="dummyfork_r" x_reflect="1" y_reflect="-1" /> 
 
 
   <!-- front caster -->
