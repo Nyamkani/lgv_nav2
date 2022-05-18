@@ -27,7 +27,7 @@ from launch_ros.actions import Node
 
 def generate_launch_description():
     #common launch argument
-    use_sim_time = LaunchConfiguration('use_sim_time', default='true')
+    use_sim_time = LaunchConfiguration('use_sim_time', default='false')
 
     #slam_toolbox launch arguments
     #map_dir = LaunchConfiguration('map', default=os.path.join(get_package_share_directory('lgv_navigation'), 'map', 'testmap.yaml'))
@@ -38,7 +38,7 @@ def generate_launch_description():
     return LaunchDescription([
 
         #common launch argument
-        DeclareLaunchArgument('use_sim_time', default_value='true', description='Use simulation (Gazebo) clock if true'),
+        DeclareLaunchArgument('use_sim_time', default_value='false', description='Use simulation (Gazebo) clock if true'),
 
         #slam_toolbox launch arguments
         #DeclareLaunchArgument('map', default_value=map_dir, description='Full path to map file to load'),

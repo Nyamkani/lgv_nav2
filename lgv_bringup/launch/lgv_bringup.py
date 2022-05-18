@@ -26,13 +26,15 @@ from ament_index_python.packages import get_package_share_directory
 def generate_launch_description():
     #for declaring the common arguments
     pkg_share = launch_ros.substitutions.FindPackageShare(package='lgv_bringup').find('lgv_bringup')
-    default_model_path = os.path.join(pkg_share, 'src/description/lgv.urdf')
+    default_model_path = os.path.join(pkg_share, 'src/description/diffbot.urdf')
     default_rviz_config_path = os.path.join(pkg_share, 'rviz/urdf_config.rviz')
     world_path=os.path.join(pkg_share, 'world/my_world.sdf')
-    
+
     #for launching python launch file 
     nav2_launch_file_dir = os.path.join(get_package_share_directory('lgv_navigation'), 'launch')
     slam_launch_file_dir = os.path.join(get_package_share_directory('lgv_slam'), 'launch')
+    nav350_launch_file_dir = os.path.join(get_package_share_directory('lgv_nav350'), 'launch')
+    diffbot_launch_file_dir = os.path.join(get_package_share_directory('diffbot_bringup'), 'launch')
 
     # Map fully qualified names to relative ones so the node's namespace can be prepended.
     # In case of the transforms (tf), currently, there doesn't seem to be a better alternative
@@ -46,7 +48,7 @@ def generate_launch_description():
         package='robot_state_publisher',
         executable='robot_state_publisher',
         parameters=[{'robot_description': Command(['xacro ', LaunchConfiguration('model')])}],
-        remappings=remappings,
+        #remappings=remappings,
     )
     joint_state_publisher_node = launch_ros.actions.Node(
         package='joint_state_publisher',
@@ -78,16 +80,18 @@ def generate_launch_description():
 
 
     return launch.LaunchDescription([
-        launch.actions.DeclareLaunchArgument(name='gui', default_value='true', description='Flag to enable joint_state_publisher_gui'),
+        IncludeLaunchDescription(PythonLaunchDescriptionSource([nav350_launch_file_dir, '/sicknav350.launch.py'])),
+        IncludeLaunchDescription(PythonLaunchDescriptionSource([diffbot_launch_file_dir, '/diffbot.launch.py'])),
+        #launch.actions.DeclareLaunchArgument(name='gui', default_value='true', description='Flag to enable joint_state_publisher_gui'),
         launch.actions.DeclareLaunchArgument(name='model', default_value=default_model_path, description='Absolute path to robot urdf file'),
         launch.actions.DeclareLaunchArgument(name='rvizconfig', default_value=default_rviz_config_path, description='Absolute path to rviz config file'),
-        launch.actions.DeclareLaunchArgument(name='use_sim_time', default_value='True', description='Flag to enable use_sim_time'),
+        launch.actions.DeclareLaunchArgument(name='use_sim_time', default_value='false', description='Flag to enable use_sim_time'),
         #launch.actions.ExecuteProcess(cmd=['gazebo', '--verbose', '-s', 'libgazebo_ros_init.so', '-s', 'libgazebo_ros_factory.so', world_path], output='screen'),
         #joint_state_publisher_node,
         robot_state_publisher_node,
         #spawn_entity,
         #robot_localization_node,
-        #rviz_node,
+        rviz_node,
         IncludeLaunchDescription(PythonLaunchDescriptionSource([nav2_launch_file_dir, '/nav2.launch.py'])),
         IncludeLaunchDescription(PythonLaunchDescriptionSource([slam_launch_file_dir, '/slam.launch.py'])),
     ])

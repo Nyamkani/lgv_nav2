@@ -1,0 +1,342 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <xacro:macro name="diffbot" params="prefix">
+
+  <!-- Constants for robot dimensions -->
+  <xacro:property name="PI" value="3.1415926535897931"/>
+  <xacro:property name="scanner_xoff" value="0.285"/>
+
+
+  <xacro:property name="base_mass" value="0.3" /> <!-- arbitrary value for base mass -->
+  <xacro:property name="base_width" value="0.62" />
+  <xacro:property name="base_length" value="0.6" />
+  <xacro:property name="base_height" value="0.20" />
+  <xacro:property name="base_xoff" value="0.20" />  
+
+  <xacro:property name="mid_plate_height" value="0.02" />
+  <xacro:property name="mid_plate_zoff" value="${base_height/2+0.08}" />
+
+
+  <xacro:property name="side_plate_length" value="0.125" />
+  <xacro:property name="side_plate_width" value="0.01" />
+  <xacro:property name="side_plate_height" value="0.6" />
+  <xacro:property name="side_plate_xoff" value="${scanner_xoff}" />
+  <xacro:property name="side_plate_yoff" value="${base_length/2}" />
+  <xacro:property name="side_plate_zoff" value="${side_plate_height/2+0.02}" />
+
+
+  <xacro:property name="top_plate_length" value="${side_plate_length}" />
+  <xacro:property name="top_plate_width" value="${side_plate_height }" />
+  <xacro:property name="top_plate_height" value="${side_plate_width}" />
+  <xacro:property name="top_plate_xoff" value="${scanner_xoff}" />
+  <xacro:property name="top_plate_yoff" value="0" />
+  <xacro:property name="top_plate_zoff" value="${side_plate_height+0.02}" />
+
+
+  <xacro:property name="lidar_length" value="0.1" />
+  <xacro:property name="lidar_radius" value="0.05" />
+  <xacro:property name="lidar_xoff" value="${scanner_xoff}" />
+  <xacro:property name="lidar_yoff" value="0" />
+  <xacro:property name="lidar_zoff" value="${lidar_length/2+top_plate_zoff}" />
+
+
+
+
+  <xacro:property name="wheel_mass" value="0.3" /> <!-- arbitrary value for wheel mass -->
+  <xacro:property name="wheel_len" value="0.05" />
+  <xacro:property name="wheel_radius" value="0.1" />
+  <xacro:property name="wheel_zoffset" value="${wheel_radius}" /> <!-- Space btw top of beam and the each joint -->
+  <xacro:property name="caster_wheel_mass" value="0.1" /> <!-- arbitrary value for caster wheel mass -->
+  <xacro:property name="caster_wheel_radius" value="0.015" />
+  <xacro:property name="z_offset" value="${base_height/2+0.02}" /> <!-- Space btw top of beam and the each joint -->
+  <xacro:property name="nav_offset" value="0.285" /> <!-- Space btw top of beam and the each joint -->  
+
+  <xacro:property name="fork_length" value="0.05"/>
+  <xacro:property name="fork_width" value="0.35"/>
+  <xacro:property name="fork_height" value="0.01"/>    
+  <xacro:property name="fork_xoff" value="0.125"/>
+  <xacro:property name="fork_yoff" value="0.075"/>
+  <xacro:property name="fork_zoff" value="0.03"/>
+
+
+
+
+
+
+  <!-- Base Link -->
+  <link name="${prefix}base_link">
+    <collision>
+      <origin xyz="0 0 ${z_offset}" rpy="0 0 0"/>
+      <geometry>
+        <box size="${base_width} ${base_length} ${base_height}"/>
+      </geometry>
+    </collision>
+
+    <visual>
+      <origin xyz="${base_xoff} 0 ${z_offset}" rpy="0 0 0"/>
+      <geometry>
+        <box size="${base_width} ${base_length} ${base_height}"/>
+      </geometry>
+      <material name="darkgrey"/>
+    </visual>
+
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <mass value="${base_mass}"/>
+      <inertia
+        ixx="${base_mass / 12.0 * (base_length*base_length + base_height*base_height)}" ixy="0.0" ixz="0.0"
+        iyy="${base_mass / 12.0 * (base_height*base_height + base_width*base_width)}" iyz="0.0"
+        izz="${base_mass / 12.0 * (base_width*base_width + base_length*base_length)}"/>
+      </inertial>
+    </link>
+
+    <!-- Robot Footprint -->
+    <link name="base_footprint">
+      <inertial>
+        <origin xyz="${lidar_xoff} 0 0" rpy="0 0 0"/>
+        <mass value="0"/>
+        <inertia
+          ixx="0.0" ixy="0.0" ixz="0.0"
+          iyy="0.0" iyz="0.0"
+          izz="0.0"/>
+      </inertial>
+    </link>
+
+    <joint name="${prefix}base_joint" type="fixed">
+      <parent link="${prefix}base_link"/>
+      <child link="${prefix}base_footprint"/>
+      <origin xyz="0.0 0.0 ${-(wheel_radius+wheel_zoffset)}" rpy="0 0 0"/>
+    </joint>
+
+    <!-- mid plate joint -->
+    <joint name="${prefix}mid_plate_joint" type="fixed">
+      <parent link="${prefix}base_link"/>
+      <child link="${prefix}mid_plate"/>
+      <origin xyz="0 0 ${mid_plate_zoff}" rpy="0 0 0"/>
+      <axis xyz="0 0 0"/>
+    </joint>
+
+   <!-- mid plate -->
+   <link name="${prefix}mid_plate">
+     <visual>
+      <origin xyz="${base_xoff} 0 ${mid_plate_zoff}" rpy="0 0 0"/>
+       <geometry>
+         <box size="${base_width} ${base_length} ${mid_plate_height} "/>
+       </geometry>
+       <material name="white"/>                 
+     </visual>
+   </link>
+
+
+
+
+    <!-- left side plate joint -->
+    <joint name="${prefix}left_plate_joint" type="fixed">
+      <parent link="${prefix}base_link"/>
+      <child link="${prefix}left_plate"/>
+         <origin xyz="0 0 0" rpy="0 0 0"/>
+      <axis xyz="0 0 0"/>
+    </joint>
+
+   <!-- left side plate -->
+   <link name="${prefix}left_plate">
+     <visual>
+      <origin xyz="${side_plate_xoff} ${side_plate_yoff} ${side_plate_zoff}" rpy="0 0 0"/>
+       <geometry>
+         <box size="${side_plate_length} ${side_plate_width} ${side_plate_height} "/>
+       </geometry>
+       <material name="white"/>                 
+     </visual>
+   </link>
+
+
+    <!-- right side plate joint -->
+    <joint name="${prefix}right_plate_joint" type="fixed">
+      <parent link="${prefix}base_link"/>
+      <child link="${prefix}right_plate"/>
+         <origin xyz="0 0 0" rpy="0 0 0"/>
+      <axis xyz="0 0 0"/>
+    </joint>
+
+   <!-- right side plate -->
+   <link name="${prefix}right_plate">
+     <visual>
+      <origin xyz="${side_plate_xoff} -${side_plate_yoff} ${side_plate_zoff}" rpy="0 0 0"/>
+       <geometry>
+         <box size="${side_plate_length} ${side_plate_width} ${side_plate_height} "/>
+       </geometry>
+       <material name="white"/>                 
+     </visual>
+   </link>
+
+
+
+
+
+
+
+    <!-- top plate joint -->
+    <joint name="${prefix}top_plate_joint" type="fixed">
+      <parent link="${prefix}base_link"/>
+      <child link="${prefix}top_plate"/>
+         <origin xyz="0 0 0" rpy="0 0 0"/>
+      <axis xyz="0 0 0"/>
+    </joint>
+
+   <!-- top side plate -->
+   <link name="${prefix}top_plate">
+     <visual>
+      <origin xyz="${top_plate_xoff} -${top_plate_yoff} ${top_plate_zoff}" rpy="0 0 0"/>
+       <geometry>
+         <box size="${top_plate_length} ${top_plate_width} ${top_plate_height} "/>
+       </geometry>
+       <material name="white"/>                 
+     </visual>
+   </link>
+
+
+   <!-- nav350_link joint -->
+   <joint name="lidar_joint" type="fixed">
+     <parent link="base_link"/>
+     <child link="nav350_link"/>
+     <origin xyz="0 0 0" rpy="0 0 0"/>
+   </joint>
+
+   <!-- nav350 link -->
+   <link name="nav350_link">   
+   <visual>
+     <origin xyz="${lidar_xoff} ${lidar_yoff} ${lidar_zoff} " rpy="0 0 0"/>
+       <geometry>
+         <cylinder length="${lidar_length}" radius="${lidar_radius}"/>
+       </geometry>
+       <material name="blue"/>
+     </visual>
+   </link>
+
+
+    <!-- left wheel joint -->
+    <joint name="${prefix}left_wheel_joint" type="continuous">
+      <parent link="${prefix}base_link"/>
+      <child link="${prefix}left_wheel"/>
+      <origin xyz="0 -${base_width/2} ${wheel_zoffset}" rpy="0 0 0"/>
+      <axis xyz="0 1 0"/>
+      <dynamics damping="0.2"/>
+    </joint>
+
+    <!-- left wheel Link -->
+    <link name="${prefix}left_wheel">
+      <collision>
+        <origin xyz="0 0 0" rpy="${PI/2} 0 0"/>
+        <geometry>
+          <cylinder length="${wheel_len}" radius="${wheel_radius}"/>
+        </geometry>
+      </collision>
+
+      <visual>
+        <origin xyz="0 0 0" rpy="${PI/2} 0 0"/>
+        <geometry>
+          <cylinder length="${wheel_len}" radius="${wheel_radius}"/>
+        </geometry>
+        <material name="black"/>
+      </visual>
+
+      <inertial>
+        <origin xyz="0 0 0" rpy="${PI/2} 0 0"/>
+        <mass value="${wheel_mass}"/>
+        <inertia
+          ixx="${wheel_mass / 12.0 * (3*wheel_radius + wheel_len*wheel_len)}" ixy="0.0" ixz="0.0"
+          iyy="${wheel_mass / 12.0 * wheel_radius*wheel_radius}" iyz="0.0"
+          izz="${wheel_mass / 12.0 * wheel_radius*wheel_radius}"/>
+        </inertial>
+      </link>
+
+
+    <!-- right wheel joint -->
+    <joint name="${prefix}right_wheel_joint" type="continuous">
+      <parent link="${prefix}base_link"/>
+      <child link="${prefix}right_wheel"/>
+      <origin xyz="0 ${base_width/2} ${wheel_zoffset}" rpy="0 0 0"/>
+      <axis xyz="0 1 0"/>
+      <dynamics damping="0.2"/>
+    </joint>
+
+    <!-- right wheel Link -->
+    <link name="${prefix}right_wheel">
+      <collision>
+        <origin xyz="0 0 0" rpy="${PI/2} 0 0"/>
+        <geometry>
+          <cylinder length="${wheel_len}" radius="${wheel_radius}"/>
+        </geometry>
+      </collision>
+
+      <visual>
+        <origin xyz="0 0 0" rpy="${PI/2} 0 0"/>
+        <geometry>
+          <cylinder length="${wheel_len}" radius="${wheel_radius}"/>
+        </geometry>
+        <material name="black"/>
+      </visual>
+
+      <inertial>
+        <origin xyz="0 0 0" rpy="${PI/2} 0 0"/>
+        <mass value="${wheel_mass}"/>
+        <inertia
+          ixx="${wheel_mass / 12.0 * (3*wheel_radius + wheel_len*wheel_len)}" ixy="0.0" ixz="0.0"
+          iyy="${wheel_mass / 12.0 * wheel_radius*wheel_radius}" iyz="0.0"
+          izz="${wheel_mass / 12.0 * wheel_radius*wheel_radius}"/>
+        </inertial>
+      </link>
+
+
+
+
+
+    <!-- left dummy_fork joint -->
+    <joint name="${prefix}left_fork_joint" type="fixed">
+      <parent link="${prefix}base_link"/>
+      <child link="${prefix}left_fork"/>
+      <origin xyz="-${fork_xoff} ${fork_yoff} ${fork_zoff}" rpy="0 0 0"/>
+      <axis xyz="0 0 0"/>
+    </joint>
+
+   <!-- left dummy forks -->
+   <link name="${prefix}left_fork">
+     <visual>
+      <origin xyz="-${fork_xoff} ${fork_yoff} ${fork_zoff}" rpy="0 0 0"/>
+       <geometry>
+         <box size="${fork_width} ${fork_length} ${fork_height}"/>
+       </geometry>
+       <material name="black"/>                 
+     </visual>
+   </link>
+
+
+
+
+    <!-- right dummy_fork joint -->
+    <joint name="${prefix}right_fork_joint" type="fixed">
+      <parent link="${prefix}base_link"/>
+      <child link="${prefix}right_fork"/>
+      <origin xyz="-${fork_xoff} -${fork_yoff} ${fork_zoff}" rpy="0 0 0"/>
+      <axis xyz="0 0 0"/>
+    </joint>
+
+
+    <!-- right dummy forks -->
+   <link name="${prefix}right_fork">
+     <visual>
+      <origin xyz="-${fork_xoff} -${fork_yoff} ${fork_zoff}" rpy="0 0 0"/>
+       <geometry>
+         <box size="${fork_width}  ${fork_length} ${fork_height}"/>
+       </geometry>
+       <material name="black"/>            
+     </visual>
+   </link>
+
+
+
+
+  </xacro:macro>
+
+</robot>
