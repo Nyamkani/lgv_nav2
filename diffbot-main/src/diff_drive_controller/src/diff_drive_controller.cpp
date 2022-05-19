@@ -476,7 +476,7 @@ CallbackReturn DiffDriveController::on_configure(const rclcpp_lifecycle::State &
         twist_stamped->twist = *msg;
 
         //modify by hw1  20220504
-        twist_stamped->twist.angular.z = twist_stamped->twist.angular.z*-1;
+        //twist_stamped->twist.angular.z = twist_stamped->twist.angular.z*-1;
         //modify by hw1  20220504
 
         twist_stamped->header.stamp = node_->get_clock()->now();

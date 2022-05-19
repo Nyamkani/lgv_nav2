@@ -214,7 +214,6 @@
      </visual>
    </link>
 
-
     <!-- left wheel joint -->
     <joint name="${prefix}left_wheel_joint" type="continuous">
       <parent link="${prefix}base_link"/>
@@ -292,6 +291,8 @@
 
 
 
+
+   
     <!-- left dummy_fork joint -->
     <joint name="${prefix}left_fork_joint" type="fixed">
       <parent link="${prefix}base_link"/>
