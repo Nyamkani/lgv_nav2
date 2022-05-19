@@ -80,8 +80,8 @@ def generate_launch_description():
 
 
     return launch.LaunchDescription([
-        IncludeLaunchDescription(PythonLaunchDescriptionSource([nav350_launch_file_dir, '/sicknav350.launch.py'])),
-        IncludeLaunchDescription(PythonLaunchDescriptionSource([diffbot_launch_file_dir, '/diffbot.launch.py'])),
+        #IncludeLaunchDescription(PythonLaunchDescriptionSource([nav350_launch_file_dir, '/sicknav350.launch.py'])),
+        #IncludeLaunchDescription(PythonLaunchDescriptionSource([diffbot_launch_file_dir, '/diffbot.launch.py'])),
         #launch.actions.DeclareLaunchArgument(name='gui', default_value='true', description='Flag to enable joint_state_publisher_gui'),
         launch.actions.DeclareLaunchArgument(name='model', default_value=default_model_path, description='Absolute path to robot urdf file'),
         launch.actions.DeclareLaunchArgument(name='rvizconfig', default_value=default_rviz_config_path, description='Absolute path to rviz config file'),
