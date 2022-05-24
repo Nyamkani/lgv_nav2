@@ -178,7 +178,7 @@ namespace Nyamkani
       std::string ipaddress;
       std::string frame_id;
       std::string scan;
-      bool inverted, do_mapping;
+      bool scan_inverted, odom_inverted, do_mapping;
       bool publish_odom;
       int sick_motor_speed = 8;//10; // Hz
       double sick_step_angle = 1.5;//0.5;//0.25; // deg (0.125 = no gaps between spots)
@@ -225,8 +225,7 @@ namespace Nyamkani
       double last_time_stamp=0;
 
       //
-      rclcpp::Time previous_time;
-
+      rclcpp::Time now;
 
       /*Transforms*/
       tf2::Transform odom_to_sick_tf;
@@ -254,7 +253,8 @@ namespace Nyamkani
           this->declare_parameter("mode");
           this->declare_parameter("port");
           this->declare_parameter("ipaddress");
-          this->declare_parameter("inverted");
+          this->declare_parameter("scan_inverted");
+          this->declare_parameter("odom_inverted");
           this->declare_parameter("publish_odom");
           this->declare_parameter("perform_mapping");
           this->declare_parameter("scan");
@@ -276,15 +276,14 @@ namespace Nyamkani
           this->declare_parameter("timer_smoothing_factor");
           this->declare_parameter("timer_error_threshold");
           this->declare_parameter("resolution");
-          this->declare_parameter("start_angle");
-          this->declare_parameter("stop_angle");
           this->declare_parameter("scan_rate");
 
           //add values in params
           this->get_parameter_or<int>("mode", op_mode, 4);
           this->get_parameter_or<int>("port", port, DEFAULT_SICK_TCP_PORT);
           this->get_parameter_or<std::string>("ipaddress", ipaddress, (std::string)DEFAULT_SICK_IP_ADDRESS);
-          this->get_parameter_or<bool>("inverted", inverted, false);
+          this->get_parameter_or<bool>("scan_inverted", scan_inverted, false);
+          this->get_parameter_or<bool>("odom_inverted", odom_inverted, false);
           this->get_parameter_or<bool>("publish_odom",publish_odom, false);
           this->get_parameter_or<bool>("perform_mapping", do_mapping, true);
           this->get_parameter_or<std::string>("scan", scan, "scan");
@@ -292,7 +291,7 @@ namespace Nyamkani
           this->get_parameter_or<std::string>("frame_id", frame_id, "map");
           this->get_parameter_or<std::string>("sick_frame_id", sick_frame_id, "nav350");
           this->get_parameter_or<std::string>("scan_frame_id", scan_frame_id, sick_frame_id);
-          this->get_parameter_or<std::string>("reflector_frame_id", reflector_frame_id, "nav350");
+          this->get_parameter_or<std::string>("reflector_frame_id", reflector_frame_id, sick_frame_id);
           this->get_parameter_or<std::string>("reflector_child_frame_id", reflector_child_frame_id, "reflector");
           this->get_parameter_or<std::string>("target_frame_id",target_frame_id,sick_frame_id);
           this->get_parameter_or<std::string>("mobile_base_frame_id",mobile_base_frame_id, mobile_base_frame_id);
@@ -302,8 +301,6 @@ namespace Nyamkani
           this->get_parameter_or<double>("timer_smoothing_factor", smoothing_factor, 0.97);
           this->get_parameter_or<double>("timer_error_threshold", error_threshold, 0.5);
           this->get_parameter_or<double>("resolution", sick_step_angle, 1.0);
-          this->get_parameter_or<double>("start_angle",active_sector_start_angle,0.);
-          this->get_parameter_or<double>("stop_angle",active_sector_stop_angle,360.);
           this->get_parameter_or<int>("scan_rate",sick_motor_speed,5);
       }
 
@@ -311,7 +308,7 @@ namespace Nyamkani
       void publish_scan(rclcpp::Publisher<sensor_msgs::msg::LaserScan>::SharedPtr& pub, double *range_values,
                 uint32_t n_range_values, int *intensity_values,
                 uint32_t n_intensity_values, rclcpp::Time start,
-                double scan_time, bool inverted, float angle_min,
+                double scan_time, bool scan_inverted, float angle_min,
                 float angle_max, std::string frame_id,
                 unsigned int sector_start_timestamp); 
 
@@ -373,8 +370,8 @@ namespace Nyamkani
         {
           main_operation();
           using namespace std::chrono_literals;
-          rclcpp::Rate loop_rate(2s);
-          RCLCPP_INFO(this->get_logger(),"An Error Occured trying reconnect after 2s");
+          rclcpp::Rate loop_rate(5s);
+          RCLCPP_INFO(this->get_logger(),"An Error Occured trying reconnect after 5s");
           loop_rate.sleep();
           rclcpp::spin_some(shared_from_this());
         }
@@ -390,7 +387,7 @@ namespace Nyamkani
   void sick_nav350::publish_scan(rclcpp::Publisher<sensor_msgs::msg::LaserScan>::SharedPtr& pub, double *range_values,
             uint32_t n_range_values, int *intensity_values,
             uint32_t n_intensity_values, rclcpp::Time start,
-            double scan_time, bool inverted, float angle_min,
+            double scan_time, bool scan_inverted, float angle_min,
             float angle_max, std::string frame_id,
             unsigned int sector_start_timestamp)   
   {
@@ -400,7 +397,7 @@ namespace Nyamkani
     scan_msg->header.frame_id = frame_id;
 
     // assumes scan window at the bottom
-    if (inverted) { 
+    if (scan_inverted) { 
       scan_msg->angle_min = angle_max;
       scan_msg->angle_max = angle_min;
     } 
@@ -433,7 +430,6 @@ namespace Nyamkani
                             const tf2::Stamped<tf2::Transform>::Transform& current_transform)
   {
     auto odom_msg = std::make_shared<nav_msgs::msg::Odometry>();
-    auto now = this->get_clock()->now();
 
     //add infomations
     odom_msg->header.stamp = now;
@@ -449,7 +445,7 @@ namespace Nyamkani
     odom_msg->pose.pose.position.x = current_transform.getOrigin().getX();
     odom_msg->pose.pose.position.y = current_transform.getOrigin().getY();
     odom_msg->pose.pose.position.z = 0.0f;
-    
+
     //this is function for more accurately odoms
     //but we will use kalman filter
     //odom_msg->pose.covariance.assign(0.0f);
@@ -488,13 +484,12 @@ namespace Nyamkani
       
       //Caused by no exist tf::StampedTransform() func.
       geometry_msgs::msg::TransformStamped t;
-      auto now = this->get_clock()->now();
 
       //add infomations
       t.header.stamp = now;
       t.header.frame_id = frame_id;
       t.child_frame_id = childframes.str();
-      t.transform = tf2::toMsg(b_transforms);
+      tf2::convert(b_transforms, t.transform);
 
       odom_broadcaster[i].sendTransform(t);
       childframes.str(std::string());
@@ -504,6 +499,10 @@ namespace Nyamkani
 
   int sick_nav350::Setup_Device()
   {
+    /*Initialize utils*/
+    smoothtimer.set_smoothing_factor(smoothing_factor);
+    smoothtimer.set_error_threshold(error_threshold);
+
     /* Initialize the device */
     nav350_instance->Initialize();
     nav350_instance->GetSickIdentity();
@@ -541,12 +540,11 @@ namespace Nyamkani
     else
     {
       std::string error_msg;
-      rclcpp::Time now = this->get_clock()->now();
+      using namespace std::chrono_literals;
       try
       {
-        using namespace std::chrono_literals;
         geometry_msgs::msg::TransformStamped buffer =
-            tf_buffer->lookupTransform(sick_frame_id, target_frame_id, now, 100ms);//tf2::TimePointZero
+            tf_buffer->lookupTransform(sick_frame_id, target_frame_id, this->get_clock()->now(), rclcpp::Duration::from_seconds(0.05));//tf2::TimePointZero
             tf2::convert(buffer, sickn350_to_target_tf);
       }
       catch(tf2::LookupException &exp)
@@ -567,14 +565,12 @@ namespace Nyamkani
         RCLCPP_ERROR_STREAM(this->get_logger(), "Frame id for mobile base was not set in the parameter list");
         return -1;
       }
-
       std::string error_msg;
-      rclcpp::Time now = this->get_clock()->now();
+      using namespace std::chrono_literals;
       try
       {   
-        using namespace std::chrono_literals;
         geometry_msgs::msg::TransformStamped buffer =
-              tf_buffer->lookupTransform(mobile_base_frame_id, target_frame_id, now, 100ms);//base_scan, nav350 rclcpp::Duration(TRANSFORM_TIMEOUT)
+              tf_buffer->lookupTransform(mobile_base_frame_id, target_frame_id, this->get_clock()->now(), rclcpp::Duration::from_seconds(0.05));//base_scan, nav350 rclcpp::Duration(TRANSFORM_TIMEOUT)
               tf2::convert(buffer, target_to_mobile_base_tf);
       }      
       catch(tf2::LookupException &exp)
@@ -622,11 +618,21 @@ namespace Nyamkani
     double y1 = (double) nav350_instance->PoseData_.y;
     double phi = nav350_instance->PoseData_.phi;
     //RCLCPP_INFO(this->get_logger(), "NAV350 pose in x y alpha: pose x = %.3f, pose y = %.3f, angle  = %.3f", x1, y1, phi1/1000.0);
-
-    tf2::Quaternion odomquat=createQuaternionFromYaw(DEG2RAD(phi/1000.0));
-    odomquat.inverse();
+    
+    tf2::Quaternion odomquat;
+    //odomquat.inverse();
+    if(odom_inverted) 
+    {
+      odomquat = createQuaternionFromYaw(DEG2RAD(phi/1000.0));
+      odom_to_sick_tf.setOrigin(tf2::Vector3(-x1 / 1000, -y1/ 1000, 0.0));
+    }
+    else
+    {
+      odomquat = createQuaternionFromYaw(DEG2RAD(phi/1000.0));
+      odom_to_sick_tf.setOrigin(tf2::Vector3(x1 / 1000, y1/ 1000, 0.0));
+    }
     odom_to_sick_tf.setRotation(odomquat);
-    odom_to_sick_tf.setOrigin(tf2::Vector3(-x1 / 1000, -y1/ 1000, 0.0));
+
     return 0;
   }
 
@@ -662,7 +668,7 @@ namespace Nyamkani
     if(sector_start_timestamp > last_time_stamp)
     {
       last_time_stamp = sector_start_timestamp;
-      rclcpp::Time end_scan_time = this->get_clock()->now();
+      rclcpp::Time end_scan_time = now;
 
       scan_duration = (sector_stop_timestamp - sector_start_timestamp) * 1e-3;
       avg_scandur.add_new(scan_duration);
@@ -678,9 +684,12 @@ namespace Nyamkani
 
       rclcpp::Time smoothed_end_scan_time = smoothtimer.smooth_timestamp(end_scan_time, rclcpp::Duration(full_duration));
       start_scan_time = smoothed_end_scan_time - rclcpp::Duration(scan_duration);
-      sector_start_angle-=180;
-      sector_stop_angle-=180;
-      last_sector_stop_timestamp = sector_stop_timestamp;
+      if(odom_inverted)
+      {
+        sector_start_angle-=180;
+        sector_stop_angle-=180;
+      }
+      //last_sector_stop_timestamp = sector_stop_timestamp;
     }
     return 0;
   }
@@ -692,15 +701,17 @@ namespace Nyamkani
     odom_to_target_tf = odom_to_sick_tf * sickn350_to_target_tf;
 
     geometry_msgs::msg::TransformStamped s;
-    auto now = this->get_clock()->now();
 
     //add infomations
-    s.header.stamp = now;
+    s.header.stamp =  now;
     s.header.frame_id = frame_id;
     s.child_frame_id = target_frame_id;
-    s.transform = tf2::toMsg(odom_to_target_tf);
+    tf2::convert(odom_to_target_tf, s.transform);
 
     RCLCPP_DEBUG_STREAM(this->get_logger(), "Sending transform from "<< frame_id <<" to "<< target_frame_id);
+
+    rclcpp::spin_some(shared_from_this());
+
     odom_broadcasters->sendTransform(s);  
     return 0;
   }
@@ -709,7 +720,7 @@ namespace Nyamkani
   {
     if(last_time_stamp == sector_start_timestamp)
     {
-      publish_scan(scan_pub, range_values, num_measurements, intensity_values, num_measurements, start_scan_time, scan_duration, inverted,
+      publish_scan(scan_pub, range_values, num_measurements, intensity_values, num_measurements, start_scan_time, scan_duration, scan_inverted,
           DEG2RAD((float)sector_start_angle), DEG2RAD((float)sector_stop_angle), scan_frame_id, sector_start_timestamp);
     }
     return 0;
@@ -721,9 +732,8 @@ namespace Nyamkani
     if(publish_odom)
     {
         mobile_base_current_tf = odom_to_target_tf * target_to_mobile_base_tf;
-        createOdometryMessage(this->get_clock()->now() - previous_time, mobile_base_prev_tf, mobile_base_current_tf);
+        createOdometryMessage(rclcpp::Duration::from_seconds(0.5), mobile_base_prev_tf, mobile_base_current_tf);
         mobile_base_prev_tf = mobile_base_current_tf;
-        previous_time = this->get_clock()->now();  
     }
     return 0;
   }
@@ -748,7 +758,9 @@ namespace Nyamkani
     int status = 0;
     rclcpp::spin_some(shared_from_this());
     Publish_Scan_Data();
+    rclcpp::spin_some(shared_from_this());
     Publish_Odometry_Data();
+    rclcpp::spin_some(shared_from_this());
     Transform_frame_to_target_frame();
     rclcpp::spin_some(shared_from_this());
     return status;
@@ -756,17 +768,16 @@ namespace Nyamkani
 
   int sick_nav350::main_operation()
   {
-    previous_time = this->get_clock()->now() - rclcpp::Duration(0.5f);
-    smoothtimer.set_smoothing_factor(smoothing_factor);
-    smoothtimer.set_error_threshold(error_threshold);
-    rclcpp::Rate loop_rate(8);
+
+    rclcpp::Rate loop_rate(5);
     try 
     {
       Setup_Device();  
+      Connect_Transforms();
       while (rclcpp::ok() && !need_exit)
       {
-        Publish_Datas(); 
-        Connect_Transforms();
+        now = this->get_clock()->now();
+        Publish_Datas();    
         Get_Data_From_Nav350();
         Parsing_Datas();
         loop_rate.sleep();
@@ -815,7 +826,7 @@ namespace Nyamkani
   tf2::Quaternion sick_nav350::createQuaternionFromYaw(double yaw)
   {
     tf2::Quaternion q;
-    q.setRPY(0, 0, yaw);
+    q.setRPY(0, 0, (yaw));
     //return tf2::toMsg(q);
     return q;
   }

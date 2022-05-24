@@ -74,7 +74,7 @@
     </collision>
 
     <visual>
-      <origin xyz="${base_xoff} 0 ${z_offset}" rpy="0 0 0"/>
+      <origin xyz="${base_xoff} 0 ${z_offset}" rpy="0 0 0}"/>
       <geometry>
         <box size="${base_width} ${base_length} ${base_height}"/>
       </geometry>
@@ -82,7 +82,7 @@
     </visual>
 
     <inertial>
-      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <origin xyz="0 0 0" rpy="0 0 0}"/>
       <mass value="${base_mass}"/>
       <inertia
         ixx="${base_mass / 12.0 * (base_length*base_length + base_height*base_height)}" ixy="0.0" ixz="0.0"
@@ -106,7 +106,7 @@
     <joint name="${prefix}base_joint" type="fixed">
       <parent link="${prefix}base_link"/>
       <child link="${prefix}base_footprint"/>
-      <origin xyz="0.0 0.0 ${-(wheel_radius+wheel_zoffset)}" rpy="0 0 0"/>
+      <origin xyz="${lidar_xoff}  0.0 ${-(wheel_radius+wheel_zoffset)}" rpy="0 0 0"/>
     </joint>
 
     <!-- mid plate joint -->
@@ -218,7 +218,7 @@
     <joint name="${prefix}left_wheel_joint" type="continuous">
       <parent link="${prefix}base_link"/>
       <child link="${prefix}left_wheel"/>
-      <origin xyz="0 -${base_width/2} ${wheel_zoffset}" rpy="0 0 0"/>
+      <origin xyz="0 ${base_width/2} ${wheel_zoffset}" rpy="0 0 0"/>
       <axis xyz="0 1 0"/>
       <dynamics damping="0.2"/>
     </joint>
@@ -255,7 +255,7 @@
     <joint name="${prefix}right_wheel_joint" type="continuous">
       <parent link="${prefix}base_link"/>
       <child link="${prefix}right_wheel"/>
-      <origin xyz="0 ${base_width/2} ${wheel_zoffset}" rpy="0 0 0"/>
+      <origin xyz="0 -${base_width/2} ${wheel_zoffset}" rpy="0 0 0"/>
       <axis xyz="0 1 0"/>
       <dynamics damping="0.2"/>
     </joint>

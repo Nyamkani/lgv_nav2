@@ -49,8 +49,8 @@ def generate_launch_description():
     Static_tf_nav350_to_base_link_node = launch_ros.actions.Node(
         package='tf2_ros',
         executable='static_transform_publisher',
-        name='Static_tf_nav350_to_base_scan',
-        arguments = ['0.31', '0', '0', '3.14159', '0', '0', 'nav350', 'base_link'],
+        name='Static_tf_nav350_to_base_link',
+        arguments = ['0', '0', '0', '0', '0', '0', 'nav350', 'base_link'],
     )
 
     NAV350_node = launch_ros.actions.Node(
@@ -69,12 +69,10 @@ def generate_launch_description():
             {"frame_id": "odom"},
             {"sick_frame_id": "nav350"},
             {"mobile_base_frame_id": "base_link"},
-            {"reflector_frame_id": "nav350"},
             {"reflector_child_frame_id": "reflector"},
-            {"inverted": False},
+            {"scan_inverted": False},
+            {"odom_inverted": False},
             {"resolution": 1.0},
-            {"start_angle": 0.0},
-            {"stop_angle": 360.0},
         ],
     )
 
