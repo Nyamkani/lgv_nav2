@@ -66,9 +66,10 @@ def generate_launch_description():
             {"publish_odom": True},
             {"wait_command": 1},
             {"mask_command": 1}, #Mask: Landmarkmode 0 = reflectors, 1 = reflectors+scan; Nav mode 0 = pose+reflectors, 1 = pose+scan, 2 = pose+reflectors+scan
+            {"scan_rate": 8}, #5~8hz
             {"frame_id": "odom"},
-            {"sick_frame_id": "nav350"},
-            {"mobile_base_frame_id": "base_link"},
+            {"target_frame_id": "base_link"},
+            {"reflector_frame_id": "nav350"},
             {"reflector_child_frame_id": "reflector"},
             {"scan_inverted": False},
             {"odom_inverted": False},
@@ -79,6 +80,6 @@ def generate_launch_description():
 
     return launch.LaunchDescription([
         #Static_tf_map_to_odom_node,
-        Static_tf_nav350_to_base_link_node,
+        #Static_tf_nav350_to_base_link_node,
         NAV350_node,
     ])

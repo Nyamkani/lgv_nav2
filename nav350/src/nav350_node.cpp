@@ -17,6 +17,7 @@
 #include <iostream>
 #include <sstream>
 #include <deque>
+#include <thread>
 
 //declare own ros2 headers
 #include "rclcpp/rclcpp.hpp"
@@ -187,17 +188,9 @@ namespace Nyamkani
       double smoothing_factor, error_threshold;
       const double TRANSFORM_TIMEOUT = 20.0f;
       const double POLLING_DURATION = 0.05f;
-      std::string sick_frame_id; 
       std::string target_frame_id; // the frame to be publish relative to frame_id
-      std::string scan_frame_id;   // The frame reported in the scan message.
-                                    // Decoupling this from target_frame_id allows us to
-                                    // display nav localization and ROS localization
-                                    // simultaneously in RViz.
       std::string mobile_base_frame_id = "";
       std::string reflector_frame_id, reflector_child_frame_id;
-
-      tf2::Stamped<tf2::Transform> sickn350_to_target_tf;
-      tf2::Stamped<tf2::Transform> target_to_mobile_base_tf;
 
       rclcpp::Publisher<sensor_msgs::msg::LaserScan>::SharedPtr scan_pub;
       rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_pub;
@@ -261,12 +254,9 @@ namespace Nyamkani
 
           //frame id enable
           this->declare_parameter("frame_id");
-          this->declare_parameter("sick_frame_id");
-          this->declare_parameter("scan_frame_id");
           this->declare_parameter("reflector_frame_id");
           this->declare_parameter("reflector_child_frame_id");
           this->declare_parameter("target_frame_id");
-          this->declare_parameter("mobile_base_frame_id");
 
           //command
           this->declare_parameter("wait_command");
@@ -287,21 +277,17 @@ namespace Nyamkani
           this->get_parameter_or<bool>("publish_odom",publish_odom, false);
           this->get_parameter_or<bool>("perform_mapping", do_mapping, true);
           this->get_parameter_or<std::string>("scan", scan, "scan");
-
           this->get_parameter_or<std::string>("frame_id", frame_id, "map");
-          this->get_parameter_or<std::string>("sick_frame_id", sick_frame_id, "nav350");
-          this->get_parameter_or<std::string>("scan_frame_id", scan_frame_id, sick_frame_id);
-          this->get_parameter_or<std::string>("reflector_frame_id", reflector_frame_id, sick_frame_id);
+          this->get_parameter_or<std::string>("target_frame_id",target_frame_id, "base_link");
+          this->get_parameter_or<std::string>("reflector_frame_id", reflector_frame_id, "nav350");
           this->get_parameter_or<std::string>("reflector_child_frame_id", reflector_child_frame_id, "reflector");
-          this->get_parameter_or<std::string>("target_frame_id",target_frame_id,sick_frame_id);
-          this->get_parameter_or<std::string>("mobile_base_frame_id",mobile_base_frame_id, mobile_base_frame_id);
           this->get_parameter_or<int>("wait_command", wait, 1);
           this->get_parameter_or<int>("mask_command", mask, 2);
 
           this->get_parameter_or<double>("timer_smoothing_factor", smoothing_factor, 0.97);
           this->get_parameter_or<double>("timer_error_threshold", error_threshold, 0.5);
           this->get_parameter_or<double>("resolution", sick_step_angle, 1.0);
-          this->get_parameter_or<int>("scan_rate",sick_motor_speed,5);
+          this->get_parameter_or<int>("scan_rate",sick_motor_speed,8);
       }
 
       // TODO: refactor these functions into a common util lib (similar to code in sicklms.cpp)
@@ -334,26 +320,18 @@ namespace Nyamkani
       
       int Uninitailize();
 
-      int Connect_transform_nav350_to_target();
-      
-      int Connect_transform_base_to_target();
-
       int Get_Data_From_Nav350();
 
       int Parsing_Localliazation_Data();
   
-      int Parsing_Landmark_Data();
-    
-      int Parsing_Scan_Data();
-
       int Transform_frame_to_target_frame();
  
       int Publish_Scan_Data();
  
       int Publish_Odometry_Data();
 
-      int Connect_Transforms();
- 
+      int Publish_Landmark_Data();
+
       int Parsing_Datas();
 
       int Publish_Datas();
@@ -481,7 +459,6 @@ namespace Nyamkani
       b_transforms.setRotation(tfquat);
       b_transforms.setOrigin(tf2::Vector3(-x[i] / 1000, -y[i] / 1000, 0.0));
 
-      
       //Caused by no exist tf::StampedTransform() func.
       geometry_msgs::msg::TransformStamped t;
 
@@ -531,57 +508,6 @@ namespace Nyamkani
     return 0;
   }
 
-  int sick_nav350::Connect_transform_nav350_to_target()
-  {
-    if(target_frame_id == sick_frame_id)
-    {
-      sickn350_to_target_tf.setIdentity(); 
-    }
-    else
-    {
-      std::string error_msg;
-      using namespace std::chrono_literals;
-      try
-      {
-        geometry_msgs::msg::TransformStamped buffer =
-            tf_buffer->lookupTransform(sick_frame_id, target_frame_id, this->get_clock()->now(), rclcpp::Duration::from_seconds(0.05));//tf2::TimePointZero
-            tf2::convert(buffer, sickn350_to_target_tf);
-      }
-      catch(tf2::LookupException &exp)
-      {
-          RCLCPP_ERROR_STREAM(this->get_logger(), "Transform lookup between "<<sick_frame_id<<" and "<<target_frame_id<<" failed, exiting"); //nav350, nav350
-          return -1;
-      }
-    }
-    return 0;
-  }
-  
-  int sick_nav350::Connect_transform_base_to_target()
-  {
-    if(publish_odom)
-    {
-      if(mobile_base_frame_id == "")
-      {
-        RCLCPP_ERROR_STREAM(this->get_logger(), "Frame id for mobile base was not set in the parameter list");
-        return -1;
-      }
-      std::string error_msg;
-      using namespace std::chrono_literals;
-      try
-      {   
-        geometry_msgs::msg::TransformStamped buffer =
-              tf_buffer->lookupTransform(mobile_base_frame_id, target_frame_id, this->get_clock()->now(), rclcpp::Duration::from_seconds(0.05));//base_scan, nav350 rclcpp::Duration(TRANSFORM_TIMEOUT)
-              tf2::convert(buffer, target_to_mobile_base_tf);
-      }      
-      catch(tf2::LookupException &exp)
-      {
-        RCLCPP_ERROR_STREAM(this->get_logger(), "Transform lookup between "<<mobile_base_frame_id<<" and "<<target_frame_id<<" failed, exiting");
-        return -1;
-      }
-    }
-    return 0;
-  }
-
   int sick_nav350::Get_Data_From_Nav350()
   {
     //Grab the measurements (from all sectors)
@@ -593,8 +519,6 @@ namespace Nyamkani
 
     else if (op_mode==4)
     {
-
-
       //ROS_DEBUG_STREAM("Getting nav data");
       nav350_instance->GetDataNavigation(wait,mask);
     }
@@ -606,6 +530,7 @@ namespace Nyamkani
     }
     RCLCPP_DEBUG_STREAM(this->get_logger(), "Getting sick range/scan measurements");
     nav350_instance->GetSickMeasurements(range_values, intensity_values, &num_measurements, &sector_step_angle, &sector_start_angle, &sector_stop_angle, &sector_start_timestamp, &sector_stop_timestamp);
+    rclcpp::spin_some(shared_from_this());
     return 0;
   }
 
@@ -636,7 +561,7 @@ namespace Nyamkani
     return 0;
   }
 
-  int sick_nav350::Parsing_Landmark_Data()
+  int sick_nav350::Publish_Landmark_Data()
   {
     /*
     * Get landmark data and broadcast transforms
@@ -660,7 +585,26 @@ namespace Nyamkani
     return 0;
   }
 
-  int sick_nav350::Parsing_Scan_Data()
+  int sick_nav350::Transform_frame_to_target_frame()
+  {
+    // Publish /map to /odom transform
+    // converting to target frame
+    odom_to_target_tf = odom_to_sick_tf;
+
+    geometry_msgs::msg::TransformStamped s;
+
+    //add infomations
+    s.header.stamp =  now;
+    s.header.frame_id = frame_id;
+    s.child_frame_id = target_frame_id;
+    tf2::convert(odom_to_target_tf, s.transform);
+
+    RCLCPP_DEBUG_STREAM(this->get_logger(), "Sending transform from "<< frame_id <<" to "<< target_frame_id);
+    odom_broadcasters->sendTransform(s);  
+    return 0;
+  }
+
+  int sick_nav350::Publish_Scan_Data()
   {
     /*
     * Set Scan Publisher config.
@@ -689,39 +633,10 @@ namespace Nyamkani
         sector_start_angle-=180;
         sector_stop_angle-=180;
       }
-      //last_sector_stop_timestamp = sector_stop_timestamp;
-    }
-    return 0;
-  }
-
-  int sick_nav350::Transform_frame_to_target_frame()
-  {
-    // Publish /map to /odom transform
-    // converting to target frame
-    odom_to_target_tf = odom_to_sick_tf * sickn350_to_target_tf;
-
-    geometry_msgs::msg::TransformStamped s;
-
-    //add infomations
-    s.header.stamp =  now;
-    s.header.frame_id = frame_id;
-    s.child_frame_id = target_frame_id;
-    tf2::convert(odom_to_target_tf, s.transform);
-
-    RCLCPP_DEBUG_STREAM(this->get_logger(), "Sending transform from "<< frame_id <<" to "<< target_frame_id);
-
-    rclcpp::spin_some(shared_from_this());
-
-    odom_broadcasters->sendTransform(s);  
-    return 0;
-  }
-
-  int sick_nav350::Publish_Scan_Data()
-  {
-    if(last_time_stamp == sector_start_timestamp)
-    {
+      /* Publishih Scan msg.*/
       publish_scan(scan_pub, range_values, num_measurements, intensity_values, num_measurements, start_scan_time, scan_duration, scan_inverted,
-          DEG2RAD((float)sector_start_angle), DEG2RAD((float)sector_stop_angle), scan_frame_id, sector_start_timestamp);
+          DEG2RAD((float)sector_start_angle), DEG2RAD((float)sector_stop_angle), target_frame_id, sector_start_timestamp);
+      last_sector_stop_timestamp = sector_stop_timestamp;
     }
     return 0;
   }
@@ -731,49 +646,40 @@ namespace Nyamkani
     // publishing odometry
     if(publish_odom)
     {
-        mobile_base_current_tf = odom_to_target_tf * target_to_mobile_base_tf;
-        createOdometryMessage(rclcpp::Duration::from_seconds(0.5), mobile_base_prev_tf, mobile_base_current_tf);
+        mobile_base_current_tf = odom_to_target_tf;
+        createOdometryMessage(rclcpp::Duration::from_seconds(0.3), mobile_base_prev_tf, mobile_base_current_tf);
         mobile_base_prev_tf = mobile_base_current_tf;
     }
-    return 0;
-  }
-
-  int sick_nav350::Connect_Transforms()
-  {
-    Connect_transform_nav350_to_target();
-    Connect_transform_base_to_target();
     return 0;
   }
 
   int sick_nav350::Parsing_Datas()
   {
     Parsing_Localliazation_Data();
-    Parsing_Landmark_Data();
-    Parsing_Scan_Data();
     return 0;
   }
 
   int sick_nav350::Publish_Datas()
   {
     int status = 0;
-    rclcpp::spin_some(shared_from_this());
-    Publish_Scan_Data();
-    rclcpp::spin_some(shared_from_this());
-    Publish_Odometry_Data();
-    rclcpp::spin_some(shared_from_this());
-    Transform_frame_to_target_frame();
+
+    std::vector<std::thread>threads;
+    threads.emplace_back(std::thread(&sick_nav350::Publish_Scan_Data, this));
+    threads.emplace_back(std::thread(&sick_nav350::Publish_Odometry_Data, this));
+    threads.emplace_back(std::thread(&sick_nav350::Transform_frame_to_target_frame, this));
+    threads.emplace_back(std::thread(&sick_nav350::Publish_Landmark_Data, this));
+    for (auto& thread : threads) thread.join();
+
     rclcpp::spin_some(shared_from_this());
     return status;
   }
 
   int sick_nav350::main_operation()
   {
-
-    rclcpp::Rate loop_rate(5);
+    rclcpp::Rate loop_rate(sick_motor_speed);
     try 
     {
       Setup_Device();  
-      Connect_Transforms();
       while (rclcpp::ok() && !need_exit)
       {
         now = this->get_clock()->now();
@@ -781,6 +687,7 @@ namespace Nyamkani
         Get_Data_From_Nav350();
         Parsing_Datas();
         loop_rate.sleep();
+        rclcpp::spin_some(shared_from_this());
       }
       Uninitailize();
     }
