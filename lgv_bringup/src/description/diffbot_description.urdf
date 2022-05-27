@@ -93,7 +93,7 @@
   <!-- Robot Footprint -->
   <link name="base_footprint">
     <inertial>
-      <origin xyz="0 0 ${-(wheel_radius+wheel_zoffset)}" rpy="0 0 0"/>
+      <origin xyz="0.0 0 ${-(wheel_radius+wheel_zoffset)}" rpy="0 0 0"/>
       <mass value="0"/>
       <inertia
         ixx="0.0" ixy="0.0" ixz="0.0"
@@ -199,9 +199,9 @@
 
   <!-- nav350_link joint -->
   <joint name="${prefix}lidar_joint" type="fixed">
-    <parent link="${prefix}base_link"/>
-    <child link="${prefix}nav350"/>
-    <origin xyz="${lidar_xoff} 0.0 ${lidar_zoff+side_plate_width}" rpy="0 0 0"/>
+    <parent link="${prefix}nav350"/>
+    <child link="${prefix}base_link"/>
+    <origin xyz="-${lidar_xoff} 0.0 -${lidar_zoff+side_plate_width}" rpy="0 0 0"/>
   </joint>
 
 

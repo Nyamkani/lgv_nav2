@@ -68,7 +68,7 @@ def generate_launch_description():
             {"mask_command": 1}, #Mask: Landmarkmode 0 = reflectors, 1 = reflectors+scan; Nav mode 0 = pose+reflectors, 1 = pose+scan, 2 = pose+reflectors+scan
             {"scan_rate": 8}, #5~8hz
             {"frame_id": "odom"},
-            {"target_frame_id": "base_link"},
+            {"target_frame_id": "nav350"},
             {"reflector_frame_id": "nav350"},
             {"reflector_child_frame_id": "reflector"},
             {"scan_inverted": False},

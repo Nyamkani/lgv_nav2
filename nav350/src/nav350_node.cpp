@@ -338,21 +338,15 @@ namespace Nyamkani
   
       int main_operation();
 
+      int Process();
+
      public:
       int main_loop()
       {
         init_param();
         auto nav350 = sick_nav350::Get_Instance();
         
-        while(!need_exit)
-        {
-          main_operation();
-          using namespace std::chrono_literals;
-          rclcpp::Rate loop_rate(5s);
-          RCLCPP_INFO(this->get_logger(),"An Error Occured trying reconnect after 5s");
-          loop_rate.sleep();
-          rclcpp::spin_some(shared_from_this());
-        }
+        main_operation();
         return 0;
       }
   };
@@ -530,7 +524,12 @@ namespace Nyamkani
     }
     RCLCPP_DEBUG_STREAM(this->get_logger(), "Getting sick range/scan measurements");
     nav350_instance->GetSickMeasurements(range_values, intensity_values, &num_measurements, &sector_step_angle, &sector_start_angle, &sector_stop_angle, &sector_start_timestamp, &sector_stop_timestamp);
+    Parsing_Datas();
+
+    rclcpp::Rate loop_rate(sick_motor_speed);
+    loop_rate.sleep();
     rclcpp::spin_some(shared_from_this());
+
     return 0;
   }
 
@@ -663,7 +662,7 @@ namespace Nyamkani
   {
     int status = 0;
 
-    std::vector<std::thread>threads;
+    std::vector<std::thread> threads;
     threads.emplace_back(std::thread(&sick_nav350::Publish_Scan_Data, this));
     threads.emplace_back(std::thread(&sick_nav350::Publish_Odometry_Data, this));
     threads.emplace_back(std::thread(&sick_nav350::Transform_frame_to_target_frame, this));
@@ -674,20 +673,24 @@ namespace Nyamkani
     return status;
   }
 
+  int sick_nav350::Process()
+  {
+    now = this->get_clock()->now();
+    std::vector<std::thread> threads;
+    threads.emplace_back(std::thread(&sick_nav350::Get_Data_From_Nav350, this));
+    threads.emplace_back(std::thread(&sick_nav350::Publish_Datas, this));
+    for (auto& thread : threads) thread.join(); 
+    return 0;
+  }
+
   int sick_nav350::main_operation()
   {
-    rclcpp::Rate loop_rate(sick_motor_speed);
     try 
     {
       Setup_Device();  
       while (rclcpp::ok() && !need_exit)
       {
-        now = this->get_clock()->now();
-        Publish_Datas();    
-        Get_Data_From_Nav350();
-        Parsing_Datas();
-        loop_rate.sleep();
-        rclcpp::spin_some(shared_from_this());
+        Process();
       }
       Uninitailize();
     }
