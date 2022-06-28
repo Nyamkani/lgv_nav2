@@ -31,7 +31,8 @@ def generate_launch_description():
 
 
     #navigation2 launch arguments
-    map_dir = LaunchConfiguration('map', default=os.path.join(get_package_share_directory('lgv_navigation'), 'map', 'testmap.yaml'))
+    map_file_name = '6f.yaml'
+    map_dir = LaunchConfiguration('map', default=os.path.join(get_package_share_directory('lgv_navigation'), 'map', map_file_name))
     nav_param_file_name = 'nav2_params.yaml'
     nav_param_dir = LaunchConfiguration('params_file', default=os.path.join(get_package_share_directory('lgv_navigation'),'param', nav_param_file_name))
     nav2_launch_file_dir = os.path.join(get_package_share_directory('nav2_bringup'), 'launch')

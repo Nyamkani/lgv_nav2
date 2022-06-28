@@ -33,7 +33,7 @@ def generate_launch_description():
     #for launching python launch file 
     nav2_launch_file_dir = os.path.join(get_package_share_directory('lgv_navigation'), 'launch')
     slam_launch_file_dir = os.path.join(get_package_share_directory('lgv_slam'), 'launch')
-    nav350_launch_file_dir = os.path.join(get_package_share_directory('lgv_nav350'), 'launch')
+    #nav350_launch_file_dir = os.path.join(get_package_share_directory('lgv_nav350'), 'launch')
     diffbot_launch_file_dir = os.path.join(get_package_share_directory('diffbot_bringup'), 'launch')
 
     # Map fully qualified names to relative ones so the node's namespace can be prepended.
@@ -42,7 +42,7 @@ def generate_launch_description():
     # https://github.com/ros/robot_state_publisher/pull/30
     # TODO(orduno) Substitute with `PushNodeRemapping`
     #              https://github.com/ros2/launch_ros/issues/56
-    remappings = [('/tf', 'tf'),('/tf_static', 'tf_static')]
+    #remappings = [('/tf', 'tf'),('/tf_static', 'tf_static')]
 
     robot_state_publisher_node = launch_ros.actions.Node(
         package='robot_state_publisher',
@@ -80,8 +80,8 @@ def generate_launch_description():
 
 
     return launch.LaunchDescription([
-        IncludeLaunchDescription(PythonLaunchDescriptionSource([nav350_launch_file_dir, '/sicknav350.launch.py'])),
-        IncludeLaunchDescription(PythonLaunchDescriptionSource([diffbot_launch_file_dir, '/diffbot.launch.py'])),
+        #IncludeLaunchDescription(PythonLaunchDescriptionSource([nav350_launch_file_dir, '/sicknav350.launch.py'])),
+        #IncludeLaunchDescription(PythonLaunchDescriptionSource([diffbot_launch_file_dir, '/diffbot.launch.py'])),
         #launch.actions.DeclareLaunchArgument(name='gui', default_value='true', description='Flag to enable joint_state_publisher_gui'),
         launch.actions.DeclareLaunchArgument(name='model', default_value=default_model_path, description='Absolute path to robot urdf file'),
         launch.actions.DeclareLaunchArgument(name='rvizconfig', default_value=default_rviz_config_path, description='Absolute path to rviz config file'),
@@ -91,7 +91,7 @@ def generate_launch_description():
         robot_state_publisher_node,
         #spawn_entity,
         #robot_localization_node,
-        #rviz_node,
+        rviz_node,
         IncludeLaunchDescription(PythonLaunchDescriptionSource([nav2_launch_file_dir, '/nav2.launch.py'])),
         IncludeLaunchDescription(PythonLaunchDescriptionSource([slam_launch_file_dir, '/slam.launch.py'])),
     ])
